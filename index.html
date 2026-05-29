@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美股投资管理系统</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@300;400;500&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0c0c0e;
+  --bg2: #141416;
+  --bg3: #1c1c20;
+  --bg4: #242428;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.1);
+  --text: #e2ddd6;
+  --text2: #8a8680;
+  --text3: #4a4844;
+  --gold: #c8a84c;
+  --gold2: #e0c070;
+  --green: #4a9e6f;
+  --green2: #5abb82;
+  --red: #b85a4a;
+  --red2: #d06a58;
+  --blue: #4a7ab5;
+  --blue2: #6a9ad5;
+  --amber: #c97c3a;
+  --purple: #8b6db5;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans SC',sans-serif;font-weight:300;font-size:14px;line-height:1.6;min-height:100vh;}
+
+/* Layout */
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh;}
+.sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;}
+.main{padding:32px;overflow-x:hidden;}
+
+/* Sidebar */
+.logo{padding:0 20px 24px;border-bottom:1px solid var(--border);}
+.logo-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--gold);letter-spacing:0.2em;text-transform:uppercase;margin-bottom:6px;}
+.logo-title{font-family:'Noto Serif SC',serif;font-size:16px;font-weight:700;color:#fff;line-height:1.3;}
+.nav{padding:16px 0;flex:1;}
+.nav-section{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:0.15em;text-transform:uppercase;padding:8px 20px 4px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;color:var(--text2);font-size:13px;transition:all 0.15s;border-left:2px solid transparent;}
+.nav-item:hover{color:var(--text);background:var(--bg3);}
+.nav-item.active{color:var(--gold2);background:var(--bg3);border-left-color:var(--gold);}
+.nav-icon{font-size:15px;width:18px;text-align:center;}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);}
+
+/* Page header */
+.page-header{margin-bottom:28px;}
+.page-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;}
+.page-title{font-family:'Noto Serif SC',serif;font-size:26px;font-weight:700;color:#fff;margin-bottom:6px;}
+.page-sub{color:var(--text2);font-size:13px;}
+
+/* Metric cards */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+.metric-card.highlight{border-color:rgba(200,168,76,0.25);}
+.metric-key{font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;}
+.metric-val{font-size:22px;font-weight:500;line-height:1;margin-bottom:4px;}
+.metric-sub{font-size:11px;color:var(--text2);}
+.up{color:var(--green2);}
+.down{color:var(--red2);}
+.gold{color:var(--gold2);}
+
+/* Cards */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.card-title{font-size:13px;font-weight:500;color:var(--text);}
+.card-action{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);cursor:pointer;letter-spacing:0.05em;}
+
+/* Grid layouts */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.col-span-2{grid-column:span 2;}
+
+/* Allocation bars */
+.alloc-item{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.alloc-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.alloc-name{flex:1;font-size:13px;color:var(--text2);}
+.alloc-ticker{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);margin-right:8px;}
+.alloc-pct{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);}
+.alloc-bar-bg{height:4px;background:var(--bg4);border-radius:2px;flex:1;max-width:80px;}
+.alloc-bar-fill{height:100%;border-radius:2px;}
+
+/* Positions table */
+.pos-table{width:100%;border-collapse:collapse;}
+.pos-table th{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:0.12em;text-transform:uppercase;text-align:left;padding:8px 12px;border-bottom:1px solid var(--border2);}
+.pos-table th.right{text-align:right;}
+.pos-table td{padding:11px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle;}
+.pos-table td.right{text-align:right;font-family:'DM Mono',monospace;font-size:12px;}
+.pos-table tr:hover td{background:var(--bg3);}
+.pos-table tr:last-child td{border-bottom:none;}
+.ticker-badge{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--gold);background:rgba(200,168,76,0.1);border:1px solid rgba(200,168,76,0.2);padding:2px 7px;border-radius:4px;}
+.role-badge{font-size:10px;color:var(--text3);background:var(--bg4);padding:2px 7px;border-radius:4px;}
+
+/* Progress rings / phase */
+.phase-list{list-style:none;}
+.phase-item{display:flex;gap:14px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.phase-item:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+.phase-num{font-family:'DM Mono',monospace;font-size:11px;color:var(--gold);background:rgba(200,168,76,0.1);border:1px solid rgba(200,168,76,0.2);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.phase-content{}
+.phase-period{font-family:'DM Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:0.1em;margin-bottom:3px;}
+.phase-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px;}
+.phase-desc{font-size:12px;color:var(--text2);line-height:1.6;}
+
+/* Checklist */
+.check-item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);}
+.check-item:last-child{border-bottom:none;}
+.check-box{width:16px;height:16px;border:1px solid var(--border2);border-radius:3px;flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.check-box.done{background:var(--green);border-color:var(--green);}
+.check-box.done::after{content:'✓';font-size:10px;color:#fff;}
+.check-item.done-item{text-decoration:line-through;color:var(--text3);}
+
+/* Rule lists */
+.rule-col{background:var(--bg3);border-radius:8px;padding:14px 16px;}
+.rule-header{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px;}
+.do-header{color:var(--green2);}
+.dont-header{color:var(--red2);}
+.rule-item{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);}
+.rule-item:last-child{border-bottom:none;}
+.rule-icon{flex-shrink:0;font-size:12px;}
+.do-icon{color:var(--green2);}
+.dont-icon{color:var(--red2);}
+
+/* Risk events */
+.risk-item{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.risk-item:last-child{border-bottom:none;}
+.risk-badge{font-family:'DM Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;flex-shrink:0;margin-top:2px;}
+.badge-hi{background:rgba(184,90,74,0.15);color:var(--red2);border:1px solid rgba(184,90,74,0.25);}
+.badge-md{background:rgba(201,124,58,0.15);color:var(--amber);border:1px solid rgba(201,124,58,0.25);}
+.badge-lo{background:rgba(74,158,111,0.12);color:var(--green2);border:1px solid rgba(74,158,111,0.2);}
+.risk-content{}
+.risk-trigger{font-size:12px;color:var(--text3);margin-bottom:3px;}
+.risk-action{font-size:12px;color:var(--text2);}
+
+/* Projection table */
+.proj-table{width:100%;border-collapse:collapse;}
+.proj-table th{font-family:'DM Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;text-align:right;padding:8px 12px;border-bottom:1px solid var(--border2);}
+.proj-table th:first-child{text-align:left;}
+.proj-table td{padding:10px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;font-size:12px;text-align:right;color:var(--text2);}
+.proj-table td:first-child{text-align:left;font-family:'Noto Sans SC',sans-serif;font-size:12px;}
+.proj-table tr:last-child td{color:var(--gold2);border-bottom:none;font-weight:500;}
+.proj-table .best{color:var(--green2);}
+
+/* Tabs */
+.tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border2);}
+.tab{padding:8px 16px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;}
+.tab.active{color:var(--gold2);border-bottom-color:var(--gold);}
+.tab:hover{color:var(--text);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* Input controls */
+.input-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.input-label{font-size:12px;color:var(--text2);min-width:80px;}
+.input-val{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold2);min-width:70px;text-align:right;}
+input[type=range]{flex:1;accent-color:var(--gold);}
+input[type=number],input[type=text]{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:6px 10px;font-size:13px;font-family:'Noto Sans SC',sans-serif;width:100%;outline:none;}
+input[type=number]:focus,input[type=text]:focus{border-color:var(--gold);}
+.btn{background:transparent;border:1px solid var(--border2);color:var(--text2);padding:7px 16px;border-radius:6px;font-size:12px;font-family:'Noto Sans SC',sans-serif;cursor:pointer;transition:all 0.15s;}
+.btn:hover{background:var(--bg3);color:var(--text);}
+.btn-gold{border-color:rgba(200,168,76,0.4);color:var(--gold2);}
+.btn-gold:hover{background:rgba(200,168,76,0.08);}
+
+/* Section divider */
+.section-gap{height:24px;}
+
+/* Chart canvas wrapper */
+.chart-wrap{position:relative;width:100%;}
+
+/* Stoploss visual */
+.stopbar{height:8px;background:var(--bg4);border-radius:4px;margin:6px 0;overflow:hidden;}
+.stopfill{height:100%;border-radius:4px;transition:width 0.4s;}
+
+/* Notification dot */
+.dot-green{display:inline-block;width:6px;height:6px;background:var(--green2);border-radius:50%;margin-right:5px;}
+.dot-red{display:inline-block;width:6px;height:6px;background:var(--red2);border-radius:50%;margin-right:5px;}
+.dot-gold{display:inline-block;width:6px;height:6px;background:var(--gold);border-radius:50%;margin-right:5px;}
+
+/* Responsive */
+@media(max-width:768px){
+  .app{grid-template-columns:1fr;}
+  .sidebar{display:none;}
+  .metrics{grid-template-columns:repeat(2,1fr);}
+  .grid-2{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-label">Investment OS</div>
+    <div class="logo-title">美股长期<br>投资系统</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">概览</div>
+    <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⬡</span>投资组合</div>
+    <div class="nav-item" onclick="showPage('positions')"><span class="nav-icon">◧</span>持仓明细</div>
+    <div class="nav-section">管理</div>
+    <div class="nav-item" onclick="showPage('strategy')"><span class="nav-icon">◈</span>投资策略</div>
+    <div class="nav-item" onclick="showPage('risk')"><span class="nav-icon">◉</span>风险管理</div>
+    <div class="nav-item" onclick="showPage('checklist')"><span class="nav-icon">◫</span>操作日历</div>
+    <div class="nav-section">工具</div>
+    <div class="nav-item" onclick="showPage('calculator')"><span class="nav-icon">◬</span>复利计算器</div>
+    <div class="nav-item" onclick="showPage('journal')"><span class="nav-icon">◱</span>投资日志</div>
+  </nav>
+  <div class="sidebar-footer">新加坡 · IBKR账户<br>最后更新：今日</div>
+</aside>
+
+<!-- Main content -->
+<main class="main" id="main-content">
+
+<!-- ===== DASHBOARD ===== -->
+<div id="page-dashboard">
+  <div class="page-header">
+    <div class="page-label">Portfolio Overview</div>
+    <div class="page-title">投资组合总览</div>
+    <div class="page-sub">核心-卫星策略 · 定投复利 · 长期持有</div>
+  </div>
+
+  <div class="metrics">
+    <div class="metric-card highlight">
+      <div class="metric-key">账户净值</div>
+      <div class="metric-val gold" id="net-liq">$2,007</div>
+      <div class="metric-sub">IBKR账户</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-key">今日盈亏</div>
+      <div class="metric-val" id="daily-pnl">$0.00</div>
+      <div class="metric-sub">实时数据</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-key">累计定投</div>
+      <div class="metric-val" id="total-invested">$2,007</div>
+      <div class="metric-sub">含初始本金</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-key">目标进度</div>
+      <div class="metric-val gold" id="goal-pct">1.3%</div>
+      <div class="metric-sub">目标 $150,000</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Portfolio chart -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">净值增长曲线</span>
+        <span class="card-action" id="chart-range-btn" onclick="toggleChartRange()">切换视图</span>
+      </div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="portfolioChart" role="img" aria-label="投资组合净值增长曲线"></canvas>
+      </div>
+    </div>
+    <!-- Allocation -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">资产配置</span>
+        <span class="card-action">目标配置</span>
+      </div>
+      <div class="chart-wrap" style="height:140px;margin-bottom:12px">
+        <canvas id="allocChart" role="img" aria-label="资产配置饼图"></canvas>
+      </div>
+      <div id="alloc-list"></div>
+    </div>
+  </div>
+
+  <!-- Quick positions -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">当前持仓</span>
+      <span class="card-action" onclick="showPage('positions')">查看全部 →</span>
+    </div>
+    <table class="pos-table">
+      <thead>
+        <tr>
+          <th>标的</th><th>名称</th><th class="right">股数</th><th class="right">现价</th><th class="right">市值</th><th class="right">盈亏</th><th class="right">仓位</th>
+        </tr>
+      </thead>
+      <tbody id="dashboard-positions"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== POSITIONS ===== -->
+<div id="page-positions" style="display:none">
+  <div class="page-header">
+    <div class="page-label">Holdings</div>
+    <div class="page-title">持仓明细</div>
+    <div class="page-sub">管理你的每一笔持仓，设置止损，追踪盈亏</div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header">
+      <span class="card-title">添加持仓</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:10px;align-items:end">
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">股票代码</div><input type="text" id="add-ticker" placeholder="QQQ" style="text-transform:uppercase"></div>
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">买入价格 $</div><input type="number" id="add-price" placeholder="736.00"></div>
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">股数</div><input type="number" id="add-shares" placeholder="1"></div>
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">止损价 $</div><input type="number" id="add-stop" placeholder="625.00"></div>
+      <button class="btn btn-gold" onclick="addPosition()" style="height:36px;padding:0 18px">添加</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">持仓列表</span></div>
+    <table class="pos-table">
+      <thead>
+        <tr><th>代码</th><th>买入价</th><th class="right">股数</th><th class="right">成本</th><th class="right">现价</th><th class="right">盈亏</th><th class="right">止损</th><th class="right">止损距离</th><th></th></tr>
+      </thead>
+      <tbody id="full-positions"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== STRATEGY ===== -->
+<div id="page-strategy" style="display:none">
+  <div class="page-header">
+    <div class="page-label">Investment Strategy</div>
+    <div class="page-title">投资策略</div>
+    <div class="page-sub">核心-卫星策略的完整执行框架</div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><span class="card-title">目标配置比例</span></div>
+      <div style="margin-bottom:12px">
+        <div class="alloc-item"><div class="alloc-dot" style="background:#4a7ab5"></div><span class="alloc-ticker">QQQ</span><span class="alloc-name">纳斯达克100 ETF</span><div class="alloc-bar-bg"><div class="alloc-bar-fill" style="width:100%;background:#4a7ab5"></div></div><span class="alloc-pct">40%</span></div>
+        <div class="alloc-item"><div class="alloc-dot" style="background:#6a9ad5"></div><span class="alloc-ticker">SPY</span><span class="alloc-name">标普500 ETF</span><div class="alloc-bar-bg"><div class="alloc-bar-fill" style="width:50%;background:#6a9ad5"></div></div><span class="alloc-pct">20%</span></div>
+        <div class="alloc-item"><div class="alloc-dot" style="background:#4a9e6f"></div><span class="alloc-ticker">个股</span><span class="alloc-name">精选成长个股</span><div class="alloc-bar-bg"><div class="alloc-bar-fill" style="width:50%;background:#4a9e6f"></div></div><span class="alloc-pct">20%</span></div>
+        <div class="alloc-item"><div class="alloc-dot" style="background:#c97c3a"></div><span class="alloc-ticker">防御</span><span class="alloc-name">防御/高股息</span><div class="alloc-bar-bg"><div class="alloc-bar-fill" style="width:25%;background:#c97c3a"></div></div><span class="alloc-pct">10%</span></div>
+        <div class="alloc-item"><div class="alloc-dot" style="background:#5a5652"></div><span class="alloc-ticker">现金</span><span class="alloc-name">备用现金</span><div class="alloc-bar-bg"><div class="alloc-bar-fill" style="width:25%;background:#5a5652"></div></div><span class="alloc-pct">10%</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">纪律规则</span></div>
+      <div class="grid-2" style="margin-bottom:0">
+        <div class="rule-col">
+          <div class="rule-header do-header">✓ 必须坚持</div>
+          <div class="rule-item"><span class="rule-icon do-icon">✓</span>每月固定定投</div>
+          <div class="rule-item"><span class="rule-icon do-icon">✓</span>买入同步设止损</div>
+          <div class="rule-item"><span class="rule-icon do-icon">✓</span>大跌时加仓ETF</div>
+          <div class="rule-item"><span class="rule-icon do-icon">✓</span>每年再平衡一次</div>
+          <div class="rule-item"><span class="rule-icon do-icon">✓</span>只用闲钱投资</div>
+        </div>
+        <div class="rule-col">
+          <div class="rule-header dont-header">✕ 绝对禁止</div>
+          <div class="rule-item"><span class="rule-icon dont-icon">✕</span>追热点消息买卖</div>
+          <div class="rule-item"><span class="rule-icon dont-icon">✕</span>恐慌卖出ETF</div>
+          <div class="rule-item"><span class="rule-icon dont-icon">✕</span>单股超仓位15%</div>
+          <div class="rule-item"><span class="rule-icon dont-icon">✕</span>使用杠杆融资</div>
+          <div class="rule-item"><span class="rule-icon dont-icon">✕</span>频繁换股</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">四阶段执行路线图</span></div>
+    <ul class="phase-list">
+      <li class="phase-item"><div class="phase-num">1</div><div class="phase-content"><div class="phase-period">第1–3个月 · 建仓期</div><div class="phase-name">分批入场，建立底仓</div><div class="phase-desc">第1个月买入40%仓位（QQQ+SPY），第2个月30%+1只个股，第3个月完成剩余30%。每笔买入同步设止损（-15%），开通Paper Trading并行练习。</div></div></li>
+      <li class="phase-item"><div class="phase-num">2</div><div class="phase-content"><div class="phase-period">第3个月–第5年 · 定投积累期</div><div class="phase-name">纪律定投，不择时，不追涨</div><div class="phase-desc">每月固定投入$1,000+，70%自动买ETF，30%机动买个股。市场大跌10%以上加倍买入ETF。不看每日涨跌，只看季度/年度业绩。</div></div></li>
+      <li class="phase-item"><div class="phase-num">3</div><div class="phase-content"><div class="phase-period">每年12月 · 再平衡</div><div class="phase-name">年度体检，恢复目标配置</div><div class="phase-desc">检查各仓位实际比例 vs 目标，偏差超5%则卖出超额部分补入不足。重新评估个股逻辑，上移止损线，记录年度投资总结。</div></div></li>
+      <li class="phase-item"><div class="phase-num">4</div><div class="phase-content"><div class="phase-period">第7–10年 · 收获保护期</div><div class="phase-name">降低波动，保护积累财富</div><div class="phase-desc">个股仓位逐步转移至ETF，防御板块从10%提升至25–30%，评估现金流需求，考虑设立"不动金"永续持仓。</div></div></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== RISK ===== -->
+<div id="page-risk" style="display:none">
+  <div class="page-header">
+    <div class="page-label">Risk Management</div>
+    <div class="page-title">风险管理</div>
+    <div class="page-sub">止损规则、仓位限制、应对预案</div>
+  </div>
+  <div class="metrics" style="grid-template-columns:repeat(3,1fr)">
+    <div class="metric-card"><div class="metric-key">单股止损线</div><div class="metric-val down">-15%</div><div class="metric-sub">触发自动卖出</div></div>
+    <div class="metric-card"><div class="metric-key">账户最大回撤</div><div class="metric-val" style="color:var(--amber)">-25%</div><div class="metric-sub">停止加仓，检查配置</div></div>
+    <div class="metric-card"><div class="metric-key">单股仓位上限</div><div class="metric-val gold">15%</div><div class="metric-sub">超出则减仓再平衡</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">风险事件应对预案</span></div>
+    <div class="risk-item"><span class="risk-badge badge-hi">高</span><div class="risk-content"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px">单只个股跌幅达 -15%</div><div class="risk-trigger">触发条件：从买入价下跌15%</div><div class="risk-action">→ 止损单自动触发全部卖出，冷静72小时后再评估是否回购</div></div></div>
+    <div class="risk-item"><span class="risk-badge badge-hi">高</span><div class="risk-content"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px">账户整体净值下跌 -25%</div><div class="risk-trigger">触发条件：总净值较历史高点回撤25%</div><div class="risk-action">→ 暂停新增个股，检查仓位配置，坚守ETF不要恐慌卖出</div></div></div>
+    <div class="risk-item"><span class="risk-badge badge-md">中</span><div class="risk-content"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px">QQQ/SPY 从高点回调 -20%</div><div class="risk-trigger">触发条件：ETF从近期高点下跌20%</div><div class="risk-action">→ 不卖出，反而将当月定投金额提高至2倍</div></div></div>
+    <div class="risk-item"><span class="risk-badge badge-md">中</span><div class="risk-content"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px">单只仓位超过 15%</div><div class="risk-trigger">触发条件：市值占总账户比例超15%</div><div class="risk-action">→ 部分减仓至10%以内，卖出收益买入欠配ETF</div></div></div>
+    <div class="risk-item"><span class="risk-badge badge-md">中</span><div class="risk-content"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px">个股连续两季业绩大幅不及预期</div><div class="risk-trigger">触发条件：EPS连续两季低于预期15%+</div><div class="risk-action">→ 不管涨跌，评估逻辑是否成立，以基本面为准而非股价</div></div></div>
+    <div class="risk-item"><span class="risk-badge badge-lo">低</span><div class="risk-content"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px">市场黑天鹅：指数单日跌超 -5%</div><div class="risk-trigger">触发条件：主要指数单日下跌5%以上</div><div class="risk-action">→ 不操作，不刷新账户，等72小时后再冷静判断</div></div></div>
+  </div>
+</div>
+
+<!-- ===== CHECKLIST ===== -->
+<div id="page-checklist" style="display:none">
+  <div class="page-header">
+    <div class="page-label">Investment Calendar</div>
+    <div class="page-title">操作日历</div>
+    <div class="page-sub">每月、每季、每年的标准操作流程</div>
+  </div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-header"><span class="card-title"><span class="dot-gold"></span>每月执行</span></div>
+      <div id="monthly-checks"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title"><span class="dot-green"></span>每季度执行</span></div>
+      <div id="quarterly-checks"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title"><span class="dot-green"></span>每年执行</span></div>
+      <div id="yearly-checks"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">心理建设：这些时刻最危险</span></div>
+    <div class="grid-3" style="margin-bottom:0">
+      <div style="background:var(--bg3);border-radius:8px;padding:14px 16px"><div style="font-size:18px;margin-bottom:8px">📉</div><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:5px">市场暴跌时</div><div style="font-size:12px;color:var(--text2);line-height:1.6">感觉"这次不一样"。历史上每次崩盘后都创了新高。执行计划，不看账户。</div></div>
+      <div style="background:var(--bg3);border-radius:8px;padding:14px 16px"><div style="font-size:18px;margin-bottom:8px">🚀</div><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:5px">牛市疯涨时</div><div style="font-size:12px;color:var(--text2);line-height:1.6">想加杠杆all in。这恰恰是最危险的时刻。坚守配置，超出目标仓位的减仓再平衡。</div></div>
+      <div style="background:var(--bg3);border-radius:8px;padding:14px 16px"><div style="font-size:18px;margin-bottom:8px">💬</div><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:5px">听到内幕消息</div><div style="font-size:12px;color:var(--text2);line-height:1.6">博主推荐"必涨"股。99%是噪音。想买先分析，买入不超过5%仓位。</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CALCULATOR ===== -->
+<div id="page-calculator" style="display:none">
+  <div class="page-header">
+    <div class="page-label">Compound Interest Calculator</div>
+    <div class="page-title">复利计算器</div>
+    <div class="page-sub">模拟不同参数下的长期财富增长</div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header"><span class="card-title">参数设置</span></div>
+      <div class="input-row"><span class="input-label">初始本金</span><input type="range" id="c-init" min="10000" max="50000" step="1000" value="30000" oninput="calcUpdate()"><span class="input-val" id="c-init-v">$30,000</span></div>
+      <div class="input-row"><span class="input-label">每月定投</span><input type="range" id="c-monthly" min="500" max="5000" step="100" value="1000" oninput="calcUpdate()"><span class="input-val" id="c-monthly-v">$1,000</span></div>
+      <div class="input-row"><span class="input-label">预期年化</span><input type="range" id="c-rate" min="6" max="20" step="1" value="13" oninput="calcUpdate()"><span class="input-val" id="c-rate-v">13%</span></div>
+      <div class="input-row"><span class="input-label">投资年限</span><input type="range" id="c-years" min="5" max="20" step="1" value="10" oninput="calcUpdate()"><span class="input-val" id="c-years-v">10年</span></div>
+      <div style="height:1px;background:var(--border);margin:12px 0"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">最终资产</div><div style="font-size:20px;font-weight:500;color:var(--gold2)" id="c-final">—</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">复利收益</div><div style="font-size:20px;font-weight:500;color:var(--green2)" id="c-gain">—</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">总投入本金</div><div style="font-size:20px;font-weight:500;color:var(--text)" id="c-cost">—</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">回报倍数</div><div style="font-size:20px;font-weight:500;color:var(--blue2)" id="c-mult">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">增长曲线</span></div>
+      <div class="chart-wrap" style="height:280px">
+        <canvas id="calcChart" role="img" aria-label="复利增长曲线对比"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">三情景对比预测表</span></div>
+    <table class="proj-table">
+      <thead><tr><th>时间节点</th><th>累计本金</th><th>保守 10%</th><th>中性 13%</th><th>积极 15%</th></tr></thead>
+      <tbody id="proj-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== JOURNAL ===== -->
+<div id="page-journal" style="display:none">
+  <div class="page-header">
+    <div class="page-label">Investment Journal</div>
+    <div class="page-title">投资日志</div>
+    <div class="page-sub">记录每一个买卖决策和思考过程</div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><span class="card-title">新增记录</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">日期</div><input type="text" id="j-date" placeholder="2026-05-29"></div>
+      <div><div style="font-size:11px;color:var(--text3);margin-bottom:4px">类型</div>
+        <select id="j-type" style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:6px 10px;font-size:13px;width:100%;outline:none">
+          <option value="buy">买入</option><option value="sell">卖出</option><option value="note">思考笔记</option><option value="review">定期复盘</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:10px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">内容</div><textarea id="j-content" placeholder="记录你的决策逻辑、市场观察、情绪状态..." style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:8px 10px;font-size:13px;font-family:'Noto Sans SC',sans-serif;width:100%;height:80px;outline:none;resize:none"></textarea></div>
+    <button class="btn btn-gold" onclick="addJournal()">保存记录</button>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">历史记录</span></div>
+    <div id="journal-list"></div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+const state = {
+  positions: JSON.parse(localStorage.getItem('positions') || '[]'),
+  checks: JSON.parse(localStorage.getItem('checks') || '{}'),
+  journal: JSON.parse(localStorage.getItem('journal') || '[]'),
+  currentPage: 'dashboard'
+};
+
+const allocs = [
+  {ticker:'QQQ',name:'纳斯达克100 ETF',pct:40,color:'#4a7ab5',role:'核心底仓'},
+  {ticker:'SPY',name:'标普500 ETF',pct:20,color:'#6a9ad5',role:'压舱石'},
+  {ticker:'个股',name:'精选成长个股',pct:20,color:'#4a9e6f',role:'卫星仓'},
+  {ticker:'防御',name:'防御/高股息',pct:10,color:'#c97c3a',role:'稳定器'},
+  {ticker:'现金',name:'备用现金',pct:10,color:'#5a5652',role:'机动仓'}
+];
+
+const monthly = ['固定日期买入定投份额（如每月1日）','确认所有止损单仍有效（GTC状态）','记录本月买入价格和股数','阅读1–2篇宏观经济报告'];
+const quarterly = ['查看持仓个股季度财报','对比实际仓位 vs 目标配置','评估个股逻辑是否仍成立','记录季度投资复盘日志'];
+const yearly = ['完整再平衡（偏差>5%调整）','上移止损线（跟随涨幅）','评估年度总回报 vs 目标','复盘所有买卖决策对错','新加坡税务整理（股息申报）'];
+
+function save() { localStorage.setItem('positions', JSON.stringify(state.positions)); localStorage.setItem('checks', JSON.stringify(state.checks)); localStorage.setItem('journal', JSON.stringify(state.journal)); }
+
+function fmt(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtPct(n) { return (n >= 0 ? '+' : '') + n.toFixed(2) + '%'; }
+
+function showPage(p) {
+  document.querySelectorAll('[id^="page-"]').forEach(el => el.style.display = 'none');
+  document.getElementById('page-' + p).style.display = 'block';
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  state.currentPage = p;
+  if (p === 'dashboard') renderDashboard();
+  if (p === 'positions') renderPositions();
+  if (p === 'checklist') renderChecklist();
+  if (p === 'calculator') { calcUpdate(); renderProjTable(); }
+  if (p === 'journal') renderJournal();
+}
+
+// Mock price data
+const prices = {QQQ:736.02,SPY:755.45,AAPL:311.74,AMZN:271.33,TSLA:440.64,MSFT:429.02,META:633.09,IBKR:52.40};
+function getPrice(t) { return prices[t.toUpperCase()] || 100; }
+
+// Dashboard
+let portfolioChart, allocChart, calcChartInst;
+function renderDashboard() {
+  const total = state.positions.reduce((s, p) => s + getPrice(p.ticker) * p.shares, 2007);
+  const cost = state.positions.reduce((s, p) => s + p.price * p.shares, 2007);
+  const pnl = total - cost;
+  document.getElementById('net-liq').textContent = fmt(total);
+  document.getElementById('daily-pnl').textContent = fmt(pnl);
+  document.getElementById('daily-pnl').className = 'metric-val ' + (pnl >= 0 ? 'up' : 'down');
+  document.getElementById('total-invested').textContent = fmt(cost);
+  document.getElementById('goal-pct').textContent = (total / 150000 * 100).toFixed(1) + '%';
+
+  // Portfolio chart
+  const labels = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const vals = [2007,2050,2100,2080,2150,2200,2180,2250,2300,2280,2350,total];
+  const ctx = document.getElementById('portfolioChart').getContext('2d');
+  if (portfolioChart) portfolioChart.destroy();
+  portfolioChart = new Chart(ctx, {
+    type:'line',
+    data:{labels,datasets:[{label:'净值',data:vals,borderColor:'#c8a84c',backgroundColor:'rgba(200,168,76,0.07)',fill:true,tension:0.4,pointRadius:2,borderWidth:1.5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a4844',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a4844',font:{size:10},callback:v=>'$'+Math.round(v).toLocaleString()}}}}
+  });
+
+  // Alloc donut
+  const actx = document.getElementById('allocChart').getContext('2d');
+  if (allocChart) allocChart.destroy();
+  allocChart = new Chart(actx, {
+    type:'doughnut',
+    data:{labels:allocs.map(a=>a.ticker),datasets:[{data:allocs.map(a=>a.pct),backgroundColor:allocs.map(a=>a.color),borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}
+  });
+
+  // Alloc list
+  document.getElementById('alloc-list').innerHTML = allocs.map(a=>`<div class="alloc-item"><div class="alloc-dot" style="background:${a.color}"></div><span class="alloc-ticker">${a.ticker}</span><span class="alloc-name">${a.name}</span><span class="alloc-pct">${a.pct}%</span></div>`).join('');
+
+  // Positions preview
+  const tbody = document.getElementById('dashboard-positions');
+  if (state.positions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">暂无持仓。前往「持仓明细」添加你的第一笔买入。</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.positions.slice(0,5).map(p => {
+    const cur = getPrice(p.ticker);
+    const mv = cur * p.shares;
+    const pnl = (cur - p.price) / p.price * 100;
+    const totalMv = state.positions.reduce((s,x)=>s+getPrice(x.ticker)*x.shares,0)+2007;
+    return `<tr><td><span class="ticker-badge">${p.ticker}</span></td><td style="color:var(--text2)">${p.name||p.ticker}</td><td class="right">${p.shares}</td><td class="right">${fmt(p.price)}</td><td class="right">${fmt(mv)}</td><td class="right ${pnl>=0?'up':'down'}">${fmtPct(pnl)}</td><td class="right" style="color:var(--text2)">${(mv/totalMv*100).toFixed(1)}%</td></tr>`;
+  }).join('');
+}
+
+function toggleChartRange() {}
+
+// Positions
+function addPosition() {
+  const t = document.getElementById('add-ticker').value.trim().toUpperCase();
+  const pr = parseFloat(document.getElementById('add-price').value);
+  const sh = parseFloat(document.getElementById('add-shares').value);
+  const st = parseFloat(document.getElementById('add-stop').value);
+  if (!t || !pr || !sh) return;
+  state.positions.push({ticker:t,name:t,price:pr,shares:sh,stop:st||pr*0.85,date:new Date().toISOString().slice(0,10)});
+  save();
+  renderPositions();
+  ['add-ticker','add-price','add-shares','add-stop'].forEach(id=>document.getElementById(id).value='');
+}
+
+function removePosition(i) { state.positions.splice(i,1); save(); renderPositions(); }
+
+function renderPositions() {
+  const tbody = document.getElementById('full-positions');
+  if (state.positions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">还没有持仓记录。在上方添加你的第一笔买入。</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.positions.map((p,i) => {
+    const cur = getPrice(p.ticker);
+    const cost = p.price * p.shares;
+    const mv = cur * p.shares;
+    const pnl = cur - p.price;
+    const pnlPct = pnl / p.price * 100;
+    const stopDist = (cur - p.stop) / cur * 100;
+    return `<tr>
+      <td><span class="ticker-badge">${p.ticker}</span></td>
+      <td class="right" style="color:var(--text2)">${fmt(p.price)}</td>
+      <td class="right">${p.shares}</td>
+      <td class="right" style="color:var(--text2)">${fmt(cost)}</td>
+      <td class="right">${fmt(cur)}</td>
+      <td class="right ${pnlPct>=0?'up':'down'}">${fmtPct(pnlPct)}</td>
+      <td class="right" style="color:var(--amber)">${fmt(p.stop)}</td>
+      <td class="right ${stopDist<10?'down':'up'}">${stopDist.toFixed(1)}%</td>
+      <td><button class="btn" onclick="removePosition(${i})" style="padding:3px 10px;font-size:11px;color:var(--red2)">删除</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// Checklist
+function toggleCheck(key) {
+  state.checks[key] = !state.checks[key];
+  save();
+  renderChecklist();
+}
+
+function renderCheckItems(items, prefix, containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = items.map((item,i) => {
+    const key = prefix + i;
+    const done = state.checks[key];
+    return `<div class="check-item ${done?'done-item':''}" onclick="toggleCheck('${key}')"><div class="check-box ${done?'done':''}"></div><span>${item}</span></div>`;
+  }).join('');
+}
+
+function renderChecklist() {
+  renderCheckItems(monthly, 'm', 'monthly-checks');
+  renderCheckItems(quarterly, 'q', 'quarterly-checks');
+  renderCheckItems(yearly, 'y', 'yearly-checks');
+}
+
+// Calculator
+function calcCompound(init, monthly, rate, years) {
+  const mr = rate / 12 / 100;
+  let total = init;
+  for (let m = 1; m <= years * 12; m++) { total = total * (1 + mr) + monthly; }
+  return Math.round(total);
+}
+
+function calcUpdate() {
+  const init = +document.getElementById('c-init').value;
+  const mo = +document.getElementById('c-monthly').value;
+  const rate = +document.getElementById('c-rate').value;
+  const yrs = +document.getElementById('c-years').value;
+  document.getElementById('c-init-v').textContent = fmt(init);
+  document.getElementById('c-monthly-v').textContent = fmt(mo);
+  document.getElementById('c-rate-v').textContent = rate + '%';
+  document.getElementById('c-years-v').textContent = yrs + '年';
+  const final = calcCompound(init, mo, rate, yrs);
+  const cost = init + mo * 12 * yrs;
+  document.getElementById('c-final').textContent = fmt(final);
+  document.getElementById('c-gain').textContent = fmt(final - cost);
+  document.getElementById('c-cost').textContent = fmt(cost);
+  document.getElementById('c-mult').textContent = (final / cost).toFixed(2) + 'x';
+
+  // Chart
+  const labels = [], totalD = [], costD = [];
+  for (let y = 0; y <= yrs; y++) {
+    labels.push('第' + y + '年');
+    totalD.push(calcCompound(init, mo, rate, y));
+    costD.push(Math.round(init + mo * 12 * y));
+  }
+  const ctx = document.getElementById('calcChart').getContext('2d');
+  if (calcChartInst) calcChartInst.destroy();
+  calcChartInst = new Chart(ctx, {
+    type:'line',
+    data:{labels,datasets:[
+      {label:'资产总值',data:totalD,borderColor:'#c8a84c',backgroundColor:'rgba(200,168,76,0.07)',fill:true,tension:0.4,pointRadius:2,borderWidth:2},
+      {label:'投入本金',data:costD,borderColor:'#4a4844',borderDash:[4,3],fill:false,tension:0,pointRadius:0,borderWidth:1.5}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a4844',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#4a4844',font:{size:10},callback:v=>'$'+(v>=1000000?(v/1000000).toFixed(1)+'M':(v/1000).toFixed(0)+'K')}}}}
+  });
+  renderProjTable();
+}
+
+function renderProjTable() {
+  const init = +document.getElementById('c-init').value;
+  const mo = +document.getElementById('c-monthly').value;
+  const milestones = [1,3,5,7,10,15];
+  document.getElementById('proj-tbody').innerHTML = milestones.map(y => {
+    const cost = Math.round(init + mo * 12 * y);
+    const v10 = calcCompound(init, mo, 10, y);
+    const v13 = calcCompound(init, mo, 13, y);
+    const v15 = calcCompound(init, mo, 15, y);
+    return `<tr><td>第${y}年末</td><td style="color:var(--text3)">${fmt(cost)}</td><td style="color:var(--text2)">${fmt(v10)}</td><td>${fmt(v13)}</td><td class="best">${fmt(v15)}</td></tr>`;
+  }).join('');
+}
+
+// Journal
+function addJournal() {
+  const date = document.getElementById('j-date').value || new Date().toISOString().slice(0,10);
+  const type = document.getElementById('j-type').value;
+  const content = document.getElementById('j-content').value.trim();
+  if (!content) return;
+  state.journal.unshift({date, type, content});
+  save();
+  document.getElementById('j-content').value = '';
+  renderJournal();
+}
+
+function deleteJournal(i) { state.journal.splice(i,1); save(); renderJournal(); }
+
+function renderJournal() {
+  const types = {buy:'买入',sell:'卖出',note:'思考',review:'复盘'};
+  const colors = {buy:'var(--green2)',sell:'var(--red2)',note:'var(--blue2)',review:'var(--gold)'};
+  const container = document.getElementById('journal-list');
+  if (state.journal.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:24px;font-size:13px">还没有日志记录。开始记录你的第一笔投资思考。</div>';
+    return;
+  }
+  container.innerHTML = state.journal.map((j,i) => `
+    <div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start">
+      <div style="flex-shrink:0;text-align:right">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${j.date}</div>
+        <div style="font-size:10px;font-weight:500;margin-top:2px;color:${colors[j.type]||'var(--text2)'}">${types[j.type]||j.type}</div>
+      </div>
+      <div style="flex:1;font-size:13px;color:var(--text2);line-height:1.6">${j.content}</div>
+      <button class="btn" onclick="deleteJournal(${i})" style="padding:3px 8px;font-size:11px;color:var(--text3);flex-shrink:0">×</button>
+    </div>
+  `).join('');
+}
+
+// Init
+document.getElementById('j-date').value = new Date().toISOString().slice(0,10);
+renderDashboard();
+</script>
+</body>
+</html>

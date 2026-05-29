@@ -1,0 +1,10 @@
+{
+  "files": {
+    "main.js": "/investment-dashboard/static/js/main.bcba9d63.js",
+    "index.html": "/investment-dashboard/index.html",
+    "main.bcba9d63.js.map": "/investment-dashboard/static/js/main.bcba9d63.js.map"
+  },
+  "entrypoints": [
+    "static/js/main.bcba9d63.js"
+  ]
+}
