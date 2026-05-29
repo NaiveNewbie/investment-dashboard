@@ -19,7 +19,7 @@
 打开 `package.json`，把第4行改成你自己的GitHub用户名：
 
 ```json
-"homepage": "https://你的用户名.github.io/investment-dashboard",
+"homepage": "https://NaiveNewbie.github.io/investment-dashboard",
 ```
 
 ### 第3步：安装依赖
